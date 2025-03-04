@@ -32,9 +32,9 @@ export const MessageSchemas = {
     }),
     response: z.literal("OK"),
   },
-  getFilenames: {
+  getFileNames: {
     request: z.object({
-      method: z.literal("getFilenames"),
+      method: z.literal("getFileNames"),
       params: z.object({
         server: z.string(),
       }),

@@ -1,10 +1,10 @@
-import { watch } from "node:fs/promises";
+import { watch, stat, exists } from "node:fs/promises";
 import path from "node:path";
 import type { Remote } from "../api/remote";
 
 export async function watchDir(dir: string, remote: () => Remote | null, signal: AbortSignal) {
   const srcDir = path.resolve(process.cwd(), dir);
-  const watcher = watch(srcDir, { signal });
+  const watcher = watch(srcDir, { signal, recursive: true });
 
   for await (const event of watcher) {
     const remoteHandle = remote();
@@ -15,10 +15,42 @@ export async function watchDir(dir: string, remote: () => Remote | null, signal:
       continue;
     }
 
-    const gameFilename = path.relative(srcDir, event.filename).slice(3);
+    const gameFilename = path.relative(srcDir, event.filename).slice(3).replaceAll("\\", "/");
+    const editorFilename = path.resolve(srcDir, event.filename);
 
-    const fileHandle = Bun.file(path.resolve(srcDir, event.filename));
+    if (await exists(editorFilename) && (await stat(editorFilename)).isDirectory()) continue;
+
+    const fileHandle = Bun.file(editorFilename);
     if (!await fileHandle.exists()) {
+      const filenames = await remoteHandle.makeRequest({
+        method: "getFileNames",
+        params: { server: "home" },
+      });
+      if (!filenames.success) {
+        console.log(`Error getting filenames! Trying to delete '${gameFilename}'`);
+        continue;
+      }
+
+      const matching = filenames.result.some(a => a === gameFilename);
+      if (!matching) {
+        const matches = filenames.result.filter(a => a.startsWith(gameFilename + "/"));
+
+        for (const match of matches) {
+          const { success } = await remoteHandle.makeRequest({
+            method: "deleteFile",
+            params: {
+              server: "home",
+              filename: match,
+            },
+          });
+
+          if (success) continue;
+          console.log(`Error deleting file of directory! Trying to delete '${match}'`);
+        }
+
+        continue;
+      }
+
       const { success } = await remoteHandle.makeRequest({
         method: "deleteFile",
         params: {
