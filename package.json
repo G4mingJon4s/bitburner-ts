@@ -1,0 +1,20 @@
+{
+  "name": "bitburner-ts",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "start": "bun ./tools/index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "websocket": "^1.0.35",
+    "zod": "^3.24.2"
+  }
+}
