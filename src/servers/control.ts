@@ -1,7 +1,7 @@
 import { getAllServers } from "util/servers.ts";
 import { createStanekInstance } from "servers/stanek.ts";
 import { createShareInstance } from "servers/share.ts";
-import { createProtocol, ProtocolClient } from "util/protocol.ts";
+import { createProtocol, type ProtocolClient } from "util/protocol.ts";
 import * as t from "util/schema.ts";
 import { execute, getRamCost } from "util/execute.ts";
 
@@ -81,12 +81,12 @@ export async function main(ns: NS) {
     await ns.asleep(10);
     ns.killall(server);
   };
-  
+
   const protocolServer = p.server(router, {
-      servers: mappedServers,
-      clearServer,
-      log: ns.print,
-      debug: DEBUG,
+    servers: mappedServers,
+    clearServer,
+    log: ns.print,
+    debug: DEBUG,
   });
 
   while (true) {

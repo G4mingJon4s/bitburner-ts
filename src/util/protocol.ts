@@ -11,7 +11,7 @@ type ProtocolConfig = {
 };
 type InternalConfig = Required<Omit<ProtocolConfig, "port">> & { port: Port; };
 
-type ProtocolCaller<Input, Output> = Input extends null ? () => Promise<Output> : (input: Input) => Promise<Output>;
+type ProtocolCaller<Input, Output> = Input extends null ? () => Promise<Output extends null ? void : Output> : (input: Input) => Promise<Output extends null ? void : Output>;
 type ProtocolMetadata = {
   origin: number;
   ns: NS;
@@ -250,11 +250,13 @@ function createClient<Context, R extends AnyRouter<Context>>(
     return result;
   };
 
-  return { ...traverse(router), ping: mapFn({
-    input: null,
-    output: t.boolean(),
-    resolve: () => () => Promise.resolve(true),
-  } as Procedure<Context, null, boolean>, "ping"), };
+  return {
+    ...traverse(router), ping: mapFn({
+      input: null,
+      output: t.boolean(),
+      resolve: () => () => Promise.resolve(true),
+    } as Procedure<Context, null, boolean>, "ping"),
+  };
 }
 
 export const createProtocol = <Context = {}>(config: ProtocolConfig) => {
