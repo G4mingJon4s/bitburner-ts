@@ -71,6 +71,16 @@ export const MessageSchemas = {
     }),
     response: z.string(),
   },
+  getSaveFile: {
+    request: z.object({
+      method: z.literal("getSaveFile"),
+    }),
+    response: z.object({
+      identifier: z.string(),
+      binary: z.boolean(),
+      save: z.string(),
+    }),
+  },
   getAllServers: {
     request: z.object({
       method: z.literal("getAllServers"),

@@ -1,4 +1,5 @@
 import { updateDefinitionFile } from "../files/definitions";
+import { storeSaveFile } from "../files/savefiles";
 import { MessageAnyResponse } from "./methods";
 import { Remote } from "./remote";
 
@@ -12,14 +13,23 @@ export const createEndpoint = (port: number) => Bun.serve({
       if (connection !== null) connection.ws.close(1000, "Connected to another client");
       connection = new Remote(ws);
 
-      const response = await connection.makeRequest({
+      const defResponse = await connection.makeRequest({
         method: "getDefinitionFile",
       });
-      if (!response.success) {
-        return ws.close(1011, "Bad sync");
+      if (!defResponse.success) {
+        return ws.close(1011, "Bad definitions sync");
       }
 
-      await updateDefinitionFile(response.result);
+      await updateDefinitionFile(defResponse.result);
+
+      const saveResponse = await connection.makeRequest({
+        method: "getSaveFile",
+      });
+      if (!saveResponse.success) {
+        return ws.close(1011, "Bad save sync");
+      }
+
+      await storeSaveFile(saveResponse.result);
     },
     message: (_, m) => {
       if (typeof m !== "string") throw new Error("Unsupported message type");
