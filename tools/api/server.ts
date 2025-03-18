@@ -26,6 +26,7 @@ export const createEndpoint = (port: number) => Bun.serve({
         method: "getSaveFile",
       });
       if (!saveResponse.success) {
+        console.log("Connection failed! The RFA Endpoint doesn't support save file sync!");
         return ws.close(1011, "Bad save sync");
       }
 
