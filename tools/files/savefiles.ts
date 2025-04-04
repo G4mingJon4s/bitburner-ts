@@ -1,8 +1,9 @@
 import { readdir, stat, rm } from "node:fs/promises";
 import path from "node:path";
 
-const numSaves = Number.parseInt(process.env["NUM_SAVES"] ?? "") || null;
-if (numSaves === null || numSaves <= 0) throw new Error("No valid NUM_SAVES specified in env");
+const envSaves = Number.parseInt(process.env["NUM_SAVES"] ?? "") || null;
+if (envSaves === null || (envSaves <= 0 && envSaves !== -1)) throw new Error("No valid NUM_SAVES specified in env");
+const numSaves = envSaves === -1 ? Number.MAX_SAFE_INTEGER : envSaves;
 
 export async function storeSaveFile(data: {
   identifier: string;
