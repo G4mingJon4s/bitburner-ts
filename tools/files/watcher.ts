@@ -1,4 +1,5 @@
 import { watch, stat, exists, readdir, readFile } from "node:fs/promises";
+import * as esbuild from "esbuild";
 import path from "node:path";
 import type { Remote } from "../api/remote";
 
@@ -69,7 +70,7 @@ export async function watchDir(dir: string, remote: () => Remote | null, signal:
       params: {
         server: "home",
         filename: gameFilename,
-        content: await fileHandle.text(),
+        content: await buildFile(path.relative(process.cwd(), editorFilename)),
       },
     });
 
@@ -88,7 +89,7 @@ export async function pushAllScripts(dir: string, remote: Remote) {
 
     const stats = await stat(filePath);
     if (stats.isDirectory()) continue;
-    const content = await readFile(filePath, { encoding: "utf8" });
+    const content = await buildFile(path.relative(process.cwd(), filePath));
 
     await remote.makeRequest({
       method: "pushFile",
@@ -99,4 +100,24 @@ export async function pushAllScripts(dir: string, remote: Remote) {
       },
     })
   }
+}
+
+export async function buildFile(srcPath: string) {
+  const result = await esbuild.build({
+    entryPoints: [srcPath],
+    minify: false,
+    bundle: true,
+    write: false,
+    format: "esm",
+    target: "esnext",
+    platform: "neutral",
+    sourcemap: "inline",
+    jsx: "transform",
+    jsxFactory: "React.createElement",
+    jsxFragment: "React.Fragment",
+    logLevel: "silent",
+  }).catch(() => null);
+
+  if (result === null) return "";
+  return result.outputFiles?.[0]?.text ?? "";
 }
