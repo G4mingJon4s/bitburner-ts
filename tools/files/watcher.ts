@@ -1,4 +1,4 @@
-import { watch, stat, exists } from "node:fs/promises";
+import { watch, stat, exists, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import type { Remote } from "../api/remote";
 
@@ -75,5 +75,28 @@ export async function watchDir(dir: string, remote: () => Remote | null, signal:
 
     if (success) continue;
     console.log(`Error pushing file! Trying to push '${gameFilename}'`);
+  }
+}
+
+export async function pushAllScripts(dir: string, remote: Remote) {
+  const srcDir = path.resolve(process.cwd(), dir);
+  const files = await readdir(srcDir, { recursive: true });
+
+  for (const file of files) {
+    const filePath = path.resolve(srcDir, file);
+    const gameFilename = path.relative(srcDir, file).slice(3).replaceAll("\\", "/");
+
+    const stats = await stat(filePath);
+    if (stats.isDirectory()) continue;
+    const content = await readFile(filePath, { encoding: "utf8" });
+
+    await remote.makeRequest({
+      method: "pushFile",
+      params: {
+        server: "home",
+        filename: gameFilename,
+        content,
+      },
+    })
   }
 }

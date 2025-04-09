@@ -6,6 +6,8 @@ import { Remote } from "./remote";
 let connection: Remote | null = null;
 export const getRemote = () => connection;
 
+export const ConnectionTarget = new EventTarget();
+
 export const createEndpoint = (port: number) => Bun.serve({
   port,
   websocket: {
@@ -22,6 +24,8 @@ export const createEndpoint = (port: number) => Bun.serve({
       }
 
       await updateDefinitionFile(defResponse.result);
+
+      ConnectionTarget.dispatchEvent(new Event("connect"));
 
       const saveResponse = await connection.makeRequest({
         method: "getSaveFile",
