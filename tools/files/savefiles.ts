@@ -27,7 +27,6 @@ export async function storeSaveFile(data: {
   await Bun.write(filePath, saveData);
 
   const saveFiles = await readdir(savesDir, { encoding: "binary", recursive: false });
-  console.log(saveFiles);
   if (saveFiles.length < numSaves!) return;
 
   const saveFilesWithTimes = await Promise.all(saveFiles.map(async file => ({
@@ -35,7 +34,6 @@ export async function storeSaveFile(data: {
     time: (await stat(path.resolve(savesDir, file))).birthtimeMs,
   })));
   saveFilesWithTimes.sort((a, b) => a.time - b.time);
-  console.log(saveFilesWithTimes);
 
   const overflowing = saveFilesWithTimes.slice(0, saveFilesWithTimes.length - numSaves!);
   await Promise.all(overflowing.map(async data => await rm(path.resolve(savesDir, data.file))));
