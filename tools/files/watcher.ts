@@ -1,4 +1,4 @@
-import { watch, stat, exists, readdir, readFile } from "node:fs/promises";
+import { watch, stat, exists, readdir } from "node:fs/promises";
 import * as esbuild from "esbuild";
 import path from "node:path";
 import type { Remote } from "../api/remote";
@@ -105,13 +105,13 @@ export async function pushAllScripts(dir: string, remote: Remote) {
 export async function buildFile(srcPath: string) {
   const result = await esbuild.build({
     entryPoints: [srcPath],
-    minify: false,
+    minify: true,
     bundle: true,
     write: false,
+    treeShaking: true,
     format: "esm",
     target: "esnext",
     platform: "neutral",
-    sourcemap: "inline",
     jsx: "transform",
     jsxFactory: "React.createElement",
     jsxFragment: "React.Fragment",
