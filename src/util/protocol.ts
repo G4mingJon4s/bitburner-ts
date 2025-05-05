@@ -11,15 +11,16 @@ type ProtocolConfig = {
 };
 type InternalConfig = Required<Omit<ProtocolConfig, "port">> & { port: Port; };
 
-type ProtocolCaller<Input, Output> = Input extends null ? () => Promise<Output extends null ? void : Output> : (input: Input) => Promise<Output extends null ? void : Output>;
+type TaggedNull = { _tag: "NULL" };
+type ProtocolCaller<Input, Output> = Input extends TaggedNull ? () => Promise<Output extends TaggedNull ? void : Output> : (input: Input) => Promise<Output extends TaggedNull ? void : Output>;
 type ProtocolMetadata = {
   origin: number;
   ns: NS;
 };
 type ProcedureResolver<Context, Input, Output> = (ctx: Context, meta: ProtocolMetadata) => ProtocolCaller<Input, Output>;
 interface Procedure<Context, Input, Output> {
-  input: Input extends null ? null : t.Schema<Input>;
-  output: Output extends null ? null : t.Schema<Output>;
+  input: Input extends TaggedNull ? null : t.Schema<Input>;
+  output: Output extends TaggedNull ? null : t.Schema<Output>;
   clientAction?: (ns: NS) => Promise<void>;
   resolve: ProcedureResolver<Context, Input, Output>;
 };
@@ -35,7 +36,7 @@ type BuilderData<I, O> = {
   input: t.Schema<I> | null;
   output: t.Schema<O> | null;
 };
-class ProcedureBuilder<Context, Input = null, Output = null> {
+class ProcedureBuilder<Context, Input = TaggedNull, Output = TaggedNull> {
   private data: BuilderData<Input, Output>;
 
   constructor(data: BuilderData<Input, Output>) {
@@ -255,7 +256,7 @@ function createClient<Context, R extends AnyRouter<Context>>(
       input: null,
       output: t.boolean(),
       resolve: () => () => Promise.resolve(true),
-    } as Procedure<Context, null, boolean>, "ping"),
+    } as unknown as Procedure<Context, TaggedNull, boolean>, "ping"),
   };
 }
 

@@ -3,9 +3,8 @@ type SchemaParseResult<T, E extends SchemaError = SchemaError> =
   | { success: false; error: E };
 
 export abstract class Schema<Output> {
-  safeParse(v: unknown): SchemaParseResult<Output> {
-    throw new Error("abstract implementation missing");
-  }
+  abstract readonly _tag: string;
+  abstract safeParse(v: unknown): SchemaParseResult<Output>;
 
   parse(v: unknown): Output {
     const result = this.safeParse(v);
@@ -53,6 +52,7 @@ class SchemaUnionError extends SchemaError {
 }
 
 class SchemaRefine<T> extends Schema<T> {
+  readonly _tag: string;
   private schema: Schema<T>;
   private validator: (value: T) => boolean;
   private message: string | ((value: T) => string);
@@ -60,6 +60,7 @@ class SchemaRefine<T> extends Schema<T> {
     super();
 
     this.schema = schema;
+    this._tag = this.schema._tag;
     this.validator = validator;
     this.message = message;
   }
@@ -73,10 +74,12 @@ class SchemaRefine<T> extends Schema<T> {
 }
 
 class SchemaOptional<T extends Schema<any>> extends Schema<SchemaInfer<T> | undefined> {
+  readonly _tag: string;
   private schema: T;
   constructor(schema: T) {
     super();
     this.schema = schema;
+    this._tag = `(${this.schema._tag})|undefined`;
   }
 
   safeParse(v: unknown): SchemaParseResult<SchemaInfer<T> | undefined> {
@@ -90,6 +93,7 @@ class SchemaOptional<T extends Schema<any>> extends Schema<SchemaInfer<T> | unde
 }
 
 class SchemaString extends Schema<string> {
+  readonly _tag = "string";
   safeParse(v: unknown): SchemaParseResult<string> {
     if (typeof v !== "string") return { success: false, error: new SchemaError(`'${v}' is not a string.`) };
     return { success: true, data: v };
@@ -97,6 +101,7 @@ class SchemaString extends Schema<string> {
 }
 
 class SchemaNumber extends Schema<number> {
+  readonly _tag = "number";
   safeParse(v: unknown): SchemaParseResult<number> {
     if (typeof v !== "number") return { success: false, error: new SchemaError(`'${v}' is not a number.`) };
     return { success: true, data: v };
@@ -104,6 +109,7 @@ class SchemaNumber extends Schema<number> {
 }
 
 class SchemaBoolean extends Schema<boolean> {
+  readonly _tag = "boolean";
   safeParse(v: unknown): SchemaParseResult<boolean> {
     if (typeof v !== "boolean") return { success: false, error: new SchemaError(`'${v}' is not a boolean.`) };
     return { success: true, data: v };
@@ -119,6 +125,7 @@ class SchemaBoolean extends Schema<boolean> {
 }
 
 class SchemaTrue extends Schema<true> {
+  readonly _tag = "true";
   safeParse(v: unknown): SchemaParseResult<true> {
     if (typeof v !== "boolean" || v !== true) return { success: false, error: new SchemaError(`'${v}' is not true.`) };
     return { success: true, data: true };
@@ -126,15 +133,17 @@ class SchemaTrue extends Schema<true> {
 }
 
 class SchemaFalse extends Schema<false> {
+  readonly _tag = "false";
   safeParse(v: unknown): SchemaParseResult<false> {
     if (typeof v !== "boolean" || v !== false) return { success: false, error: new SchemaError(`'${v}' is not false.`) };
     return { success: true, data: false };
   }
 }
 
-class SchemaObject<T extends null | Record<string, Schema<any>>> extends Schema<T extends Record<string, Schema<any>> ? {
+class SchemaObject<T extends Record<string, Schema<any>>> extends Schema<T extends Record<string, Schema<any>> ? {
   [K in keyof T]: SchemaInfer<T[K]>
 } : null> {
+  readonly _tag = "object";
   private schema: T;
   constructor(schema: T) {
     super();
@@ -143,10 +152,6 @@ class SchemaObject<T extends null | Record<string, Schema<any>>> extends Schema<
 
   safeParse(v: unknown): SchemaParseResult<T extends Record<string, Schema<any>> ? { [K in keyof T]: SchemaInfer<T[K]> } : null> {
     if (typeof v !== "object") return { success: false, error: new SchemaError("Input is not a valid object.") };
-    if (this.schema === null) {
-      if (v !== null) return { success: false, error: new SchemaError(`Expected null, got: '${JSON.stringify(v)}'`) };
-      return { success: true, data: null as any };
-    }
     if (v === null) return { success: false, error: new SchemaError("Expected an object, got 'null'") };
 
     const result: any = {};
@@ -170,10 +175,12 @@ class SchemaObject<T extends null | Record<string, Schema<any>>> extends Schema<
 }
 
 class SchemaArray<T extends Schema<any>> extends Schema<SchemaInfer<T>[]> {
+  readonly _tag: string;
   private schema: T;
   constructor(schema: T) {
     super();
     this.schema = schema;
+    this._tag = `(${this.schema._tag})[]`;
   }
 
   safeParse(v: unknown): SchemaParseResult<SchemaInfer<T>[]> {
@@ -193,10 +200,12 @@ class SchemaArray<T extends Schema<any>> extends Schema<SchemaInfer<T>[]> {
 class SchemaTuple<T extends Schema<any>[]> extends Schema<{
   [K in keyof T]: SchemaInfer<T[K]>
 }> {
+  readonly _tag: string;
   private schema: T;
   constructor(schema: T) {
     super();
     this.schema = schema;
+    this._tag = `[${this.schema.map(a => `(${a._tag})`).join(",")}]`;
   }
 
   safeParse(v: unknown): SchemaParseResult<{ [K in keyof T]: SchemaInfer<T[K]> }> {
@@ -215,10 +224,12 @@ class SchemaTuple<T extends Schema<any>[]> extends Schema<{
 }
 
 class SchemaUnion<T extends [Schema<any>, ...Schema<any>[]]> extends Schema<SchemaInfer<T[number]>> {
+  readonly _tag: string;
   private schema: T;
   constructor(schema: T) {
     super();
     this.schema = schema;
+    this._tag = this.schema.map(a => `(${a._tag})`).join("|");
   }
 
   safeParse(v: unknown): SchemaParseResult<SchemaInfer<T[number]>, SchemaUnionError> {
@@ -232,10 +243,12 @@ class SchemaUnion<T extends [Schema<any>, ...Schema<any>[]]> extends Schema<Sche
 }
 
 class SchemaIntersection<T extends [Schema<any>, Schema<any>]> extends Schema<SchemaInfer<T[0]> & SchemaInfer<T[1]>> {
+  readonly _tag: string;
   private schema: T;
   constructor(schema: T) {
     super();
     this.schema = schema;
+    this._tag = this.schema.map(a => `(${a._tag})`).join("&");
   }
 
   safeParse(v: unknown): SchemaParseResult<SchemaInfer<T[0]> & SchemaInfer<T[1]>> {
@@ -254,8 +267,17 @@ class SchemaIntersection<T extends [Schema<any>, Schema<any>]> extends Schema<Sc
 }
 
 class SchemaAny extends Schema<any> {
+  readonly _tag = "any";
   safeParse(v: unknown): SchemaParseResult<any> {
     return { success: true, data: v };
+  }
+}
+
+class SchemaNull extends Schema<null> {
+  readonly _tag = "null";
+  safeParse(v: unknown): SchemaParseResult<null> {
+    if (v === null) return { success: true, data: null };
+    return { success: false, error: new SchemaError(`Expected null, got ${typeof v}: '${v}'`) };
   }
 }
 
@@ -263,8 +285,10 @@ export const string = () => new SchemaString();
 export const number = () => new SchemaNumber();
 export const boolean = () => new SchemaBoolean();
 export const any = () => new SchemaAny();
-export const object = <T extends null | Record<string, Schema<any>>>(schema: T) => new SchemaObject(schema);
+export const object = <T extends Record<string, Schema<any>>>(schema: T) => new SchemaObject(schema);
+export const nil = () => new SchemaNull();
 export const array = <T extends Schema<any>>(schema: T) => new SchemaArray(schema);
 export const tuple = <T extends Schema<any>[]>(...schema: T) => new SchemaTuple(schema);
 export const union = <T extends [Schema<any>, ...Schema<any>[]]>(...schema: T) => new SchemaUnion(schema);
 export type infer<T extends Schema<any>> = SchemaInfer<T>;
+export const isComplex = <T extends Schema<any>>(schema: T) => /[|&()]/g.test(schema._tag);
