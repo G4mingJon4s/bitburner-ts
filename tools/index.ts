@@ -6,6 +6,7 @@ const port = process.env["PORT"] ?? null;
 if (port === null) throw new Error("No port specified in env");
 
 const pushOnConnection = process.env["PUSH_ON_CONNECTION"]?.toLowerCase() === "true";
+console.log(`Push on connection is ${pushOnConnection ? "active" : "inactive"}`);
 
 const ac = new AbortController();
 
@@ -17,6 +18,7 @@ ConnectionTarget.addEventListener("connect", async () => {
   const remote = getRemote();
   if (remote === null) throw new Error("Connect event without a remote created.");
 
+  console.log("Pushing all files to the remote...");
   await pushAllScripts(srcDir, remote);
 });
 

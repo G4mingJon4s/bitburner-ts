@@ -37,6 +37,11 @@ export const createEndpoint = (port: number) => Bun.serve({
 
       await storeSaveFile(saveResponse.result);
     },
+    close: async ws => {
+      if (connection !== null && connection.ws !== ws) return ws.close(1000);
+      connection = null;
+      ws.close(1000, "Closed correctly");
+    },
     message: (_, m) => {
       if (typeof m !== "string") throw new Error("Unsupported message type");
 

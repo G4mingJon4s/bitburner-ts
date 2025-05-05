@@ -36,7 +36,9 @@ export async function watchDir(dir: string, remote: () => Remote | null, signal:
       if (!matching) {
         const matches = filenames.result.filter(a => a.startsWith(gameFilename + "/"));
 
+        console.log(`Deleting all files of the directory '${gameFilename}'...`);
         for (const match of matches) {
+          console.log(`Deleting file '${gameFilename}'`);
           const { success } = await remoteHandle.makeRequest({
             method: "deleteFile",
             params: {
@@ -52,6 +54,7 @@ export async function watchDir(dir: string, remote: () => Remote | null, signal:
         continue;
       }
 
+      console.log(`Deleting file '${gameFilename}'`);
       const { success } = await remoteHandle.makeRequest({
         method: "deleteFile",
         params: {
@@ -65,6 +68,7 @@ export async function watchDir(dir: string, remote: () => Remote | null, signal:
       continue;
     }
 
+    console.log(`Pushing file '${gameFilename}'`);
     const { success } = await remoteHandle.makeRequest({
       method: "pushFile",
       params: {
