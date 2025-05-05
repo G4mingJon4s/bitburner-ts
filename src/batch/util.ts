@@ -1,9 +1,9 @@
 import { execute, getRamCost } from "util/execute.ts";
 
 export const BATCHFILES = {
-  main: "batch/main.ts",
-  target: "batch/target.ts",
-  util: "batch/util.ts"
+	main: "batch/main.ts",
+	target: "batch/target.ts",
+	util: "batch/util.ts"
 };
 
 export type BatchHosts = {
@@ -40,9 +40,9 @@ export const batchFits = (ns: NS, hosts: BatchHosts, threads: BatchThreads): boo
 };
 
 const weakenThreadsNeeded = (ns: NS, sec: number, cores: number): number => {
-  let i = 1;
-  while (ns.weakenAnalyze(i, cores) < sec) i++;
-  return i;
+	let i = 1;
+	while (ns.weakenAnalyze(i, cores) < sec) i++;
+	return i;
 };
 
 export async function prep(ns: NS, info: { target: string; hosts: BatchHosts; }): Promise<void> {
@@ -59,37 +59,37 @@ export async function prep(ns: NS, info: { target: string; hosts: BatchHosts; })
 		async ns => await ns["weaken"](info.target)
 	);
 
-  const growThreads: number | undefined = Array.from({
-    length: Math.floor(availableRam(ns, info.hosts.grow)) / getRamCost(ns, ["grow"])
-  }, (_, i) => i + 1)
-    .toReversed()
-    .find(g => weakenThreadsNeeded(ns, ns.growthAnalyzeSecurity(g, info.target), ns.getServer(info.target).cpuCores) <=
-    (availableRam(ns, info.hosts.weaken) / getRamCost(ns, ["weaken"]))
-  );
-  if (growThreads === undefined) return;
-  const weakenThreads = weakenThreadsNeeded(ns, ns.growthAnalyzeSecurity(growThreads, info.target), ns.getServer(info.target).cpuCores);
+	const growThreads: number | undefined = Array.from({
+		length: Math.floor(availableRam(ns, info.hosts.grow)) / getRamCost(ns, ["grow"])
+	}, (_, i) => i + 1)
+		.toReversed()
+		.find(g => weakenThreadsNeeded(ns, ns.growthAnalyzeSecurity(g, info.target), ns.getServer(info.target).cpuCores) <=
+			(availableRam(ns, info.hosts.weaken) / getRamCost(ns, ["weaken"]))
+		);
+	if (growThreads === undefined) return;
+	const weakenThreads = weakenThreadsNeeded(ns, ns.growthAnalyzeSecurity(growThreads, info.target), ns.getServer(info.target).cpuCores);
 
 	if (ns.getServerMoneyAvailable(info.target) !== ns.getServerMaxMoney(info.target)) {
-    const preps = [
-      await execute(
-        ns,
-        {
-          ram: getRamCost(ns, ["grow"]),
-          threads: growThreads,
-          host: info.hosts.grow
-        }, async ns => await ns["grow"](info.target)
-      ),
-      await execute(
-        ns,
-        {
-          ram: getRamCost(ns, ["weaken"]),
-          threads: weakenThreads,
-          host: info.hosts.weaken
-        }, async ns => await ns["weaken"](info.target)
-      )
-    ];
-    return void await Promise.allSettled(preps);
-  }
+		const preps = [
+			await execute(
+				ns,
+				{
+					ram: getRamCost(ns, ["grow"]),
+					threads: growThreads,
+					host: info.hosts.grow
+				}, async ns => await ns["grow"](info.target)
+			),
+			await execute(
+				ns,
+				{
+					ram: getRamCost(ns, ["weaken"]),
+					threads: weakenThreads,
+					host: info.hosts.weaken
+				}, async ns => await ns["weaken"](info.target)
+			)
+		];
+		return void await Promise.allSettled(preps);
+	}
 }
 
 export async function batch(ns: NS, info: BatchInfo): Promise<boolean> {
@@ -182,7 +182,11 @@ export function calculateBatchThreads(ns: NS, target: string, hosts: BatchHosts,
 	}));
 	if (hackThreadsEffect.length === 0) return null;
 
-	const best = hackThreadsEffect.reduce((acc, cur) => acc.score > cur.score ? acc : cur);
+	const best = hackThreadsEffect.reduce(
+		(acc, cur) => acc === null ? cur : cur === null ? acc : acc.score > cur.score ? acc : cur
+	);
+	if (best === null) return null;
+
 	return {
 		weaken: best.weakenThreads,
 		grow: best.growThreads,
