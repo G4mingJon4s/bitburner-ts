@@ -1,28 +1,24 @@
-import { batch, batchFits, type BatchHosts, calculateBatchThreads, isPrepped, prep } from "./util.ts";
+import { batch, batchFits, type BatchHosts, type BatchResult, calculateBatchThreads, isPrepped, prep } from "./util.ts";
 import { format } from "util/format.ts";
 import { p, router, reserveServer, EXCLUDEDSERVERS } from "servers/control.ts";
 import { getTargetMetadata } from "batch/target.ts";
 import { getAllServers } from "util/servers.ts";
 
-const MAX = 10_000;
-const MIN_OFFSET = 100;
-const LEVEL_TOLERANCE = 5;
+const MAX = 50_000;
+const MIN_OFFSET = 25;
+const LEVEL_TOLERANCE = 8;
 
 export function autocomplete(data: AutocompleteData) {
-  return data.servers;
+  return [...data.servers, "--xp"];
 }
 
 export async function main(ns: NS): Promise<void> {
   ns.disableLog("ALL");
   ns.clearLog();
   ns.tail();
-  ns.resizeTail(350, 170);
+  ns.resizeTail(350, 150);
 
-  const allServers = getAllServers(ns)
-    .filter(s => !EXCLUDEDSERVERS.includes(s)
-      && ns.getServer(s).moneyMax !== undefined
-      && ns.getServer(s).moneyMax !== 0
-    );
+  const allServers = getAllServers(ns).filter(s => !EXCLUDEDSERVERS.includes(s));
 
   const client = p.client(ns, router);
 
@@ -70,7 +66,9 @@ export async function main(ns: NS): Promise<void> {
       });
     }
 
-    const batches: Promise<boolean>[] = [];
+    let batches = 0;
+    const start = Date.now();
+    const batchLogs: [number, BatchResult][] = [];
     const hackingLevel = ns.getHackingLevel();
     const threads = calculateBatchThreads(ns, target, hosts);
     if (threads === null) {
@@ -79,30 +77,47 @@ export async function main(ns: NS): Promise<void> {
     }
 
     let desync = false;
-    while (!desync && Math.abs(hackingLevel - ns.getHackingLevel()) < LEVEL_TOLERANCE) {
+    const xpMode = ns.args.includes("--xp");
+    if (xpMode) threads.hack = Math.floor(threads.hack * 0.8); // makes sure the security can always bounce back
+    while (xpMode || (!desync && Math.abs(hackingLevel - ns.getHackingLevel()) < LEVEL_TOLERANCE)) {
       await ns.asleep(1);
+
+      const moneyGain = batchLogs.length === 0 ? 0 : batchLogs.reduce(
+        (acc, cur) => acc + cur[1].moneyGained,
+        0
+      ) / batchLogs.length;
+      const timeSpent = batchLogs.reduce((acc, cur) => acc + cur[1].timeElapsed, 0);
+
+      const batchRate = batchLogs.length * 1000 / (Date.now() - start);
+
+      const timeAvg = batchLogs.length === 0 ? 0 : timeSpent / batchLogs.length;
+      const timeDev = batchLogs.length === 0 ? 0 : Math.sqrt(
+        batchLogs.reduce((acc, cur) => acc + Math.pow(cur[1].timeElapsed - timeAvg, 2), 0) / batchLogs.length
+      );
 
       ns.clearLog();
       ns.print(`TARGET: ${target}`);
       ns.print("--BATCH PHASE--");
-      ns.print(`WEAKEN TIME: ${format.time(ns.getWeakenTime(target))}s`);
-      ns.print(`GROW   TIME: ${format.time(ns.getGrowTime(target))}s`);
-      ns.print(`HACK   TIME: ${format.time(ns.getHackTime(target))}s`);
-      ns.print(`MONEY  GAIN: ${format.number((ns.hackAnalyzeChance(target) * ns.getServer(target).moneyMax! * ns.hackAnalyze(target) * threads.hack * threads.numPossible * 1000) / ns.getWeakenTime(target))}/s`);
+      ns.print(`TIME  SPENT: ${format.time(Date.now() - start)}s`);
+      ns.print(`BATCH  TIME: μ = ${Math.round(timeAvg / 100) / 10}s | σ = ${Math.round(timeDev * 10) / 10}ms`);
+      ns.print(`BATCH COUNT: ${format.number(batchRate)}/s`);
+      ns.print(`MONEY  GAIN: ${format.number(moneyGain)}/b`);
+      ns.print(`MONEY / SEC: ${format.number(batchRate * moneyGain)}`);
 
-      if (batches.length >= MAX || batches.length > threads.numPossible || !batchFits(ns, hosts, threads)) await batches.shift();
-      else {
-        if (!isPrepped(ns, target)) {
-          desync = true;
-          break;
-        }
-        console.log(`%cSTARTING BATCH: ETA ${Math.ceil(ns.getWeakenTime(target) / 1000)}s`, "color: yellow");
-        batches.push(batch(ns, {
-          target,
-          hosts,
-          threads,
-        }).catch((e: unknown) => { ns.tprint(`ERROR: Batch rejected with '${JSON.stringify(e)}'.`); desync = true; return false; }));
+      while (batches >= MAX || batches >= threads.numPossible || !batchFits(ns, hosts, threads)) await ns.asleep(1);
+      if (!isPrepped(ns, target) && !xpMode) {
+        desync = true;
+        break;
       }
+      console.log(`%cSTARTING BATCH: ETA ${Math.ceil(ns.getWeakenTime(target) / 1000)}s`, "color: yellow");
+      batches++;
+      batch(ns, { target, hosts, threads })
+        .catch((e: unknown) => { ns.tprint(`ERROR: Batch rejected with '${JSON.stringify(e)}'.`); desync = true; return null; })
+        .then(result => {
+          batches--;
+          if (result === null) return;
+          batchLogs.push([Date.now(), result]);
+        });
 
       const offset = Math.max(ns.getWeakenTime(target) / threads.numPossible, MIN_OFFSET);
       await ns.asleep(offset);
@@ -111,7 +126,7 @@ export async function main(ns: NS): Promise<void> {
     else ns.print("WARN: LEVEL TOLERANCE REACHED");
 
     ns.print("INFO: WAITING FOR BATCHES");
-    await Promise.allSettled(batches);
+    while (batches > 0) await ns.asleep(1);
 
     for (const request of requests) await request();
   }

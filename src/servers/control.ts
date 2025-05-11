@@ -70,7 +70,6 @@ export const EXCLUDEDSERVERS = ["home", "joesguns"];
 export async function main(ns: NS) {
   ns.disableLog("ALL");
   ns.clearLog();
-  const allServers = getAllServers(ns).filter(s => !EXCLUDEDSERVERS.includes(s));
   const mappedServers = new Map<number, string[]>();
   let terminatedScripts: number[] = [];
 
@@ -90,8 +89,11 @@ export async function main(ns: NS) {
   });
 
   while (true) {
+    const allServers = getAllServers(ns).filter(s => !EXCLUDEDSERVERS.includes(s));
+
     await ns.asleep(10);
     await protocolServer.tick(ns);
+
     for (const script of mappedServers.keys()) if (!terminatedScripts.includes(script) && !ns.isRunning(script)) {
       if ((mappedServers.get(script) ?? []).every(s => ns.ps(s).length === 0)) {
         if (DEBUG) ns.print(`INFO: Dropping all servers of script on PID '${script}' because it is no longer running`);

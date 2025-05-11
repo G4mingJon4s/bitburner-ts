@@ -98,6 +98,10 @@ class SchemaString extends Schema<string> {
     if (typeof v !== "string") return { success: false, error: new SchemaError(`'${v}' is not a string.`) };
     return { success: true, data: v };
   }
+
+  literal<T extends string>(value: T): SchemaLiteral<T> {
+    return new SchemaLiteral(value);
+  }
 }
 
 class SchemaNumber extends Schema<number> {
@@ -105,6 +109,10 @@ class SchemaNumber extends Schema<number> {
   safeParse(v: unknown): SchemaParseResult<number> {
     if (typeof v !== "number") return { success: false, error: new SchemaError(`'${v}' is not a number.`) };
     return { success: true, data: v };
+  }
+
+  literal<T extends number>(value: T): SchemaLiteral<T> {
+    return new SchemaLiteral(value);
   }
 }
 
@@ -278,6 +286,21 @@ class SchemaNull extends Schema<null> {
   safeParse(v: unknown): SchemaParseResult<null> {
     if (v === null) return { success: true, data: null };
     return { success: false, error: new SchemaError(`Expected null, got ${typeof v}: '${v}'`) };
+  }
+}
+
+class SchemaLiteral<T> extends Schema<T> {
+  readonly _tag: string;
+  private value: T;
+  constructor(value: T) {
+    super();
+    this.value = value;
+    this._tag = `${JSON.stringify(value)}`;
+  }
+
+  safeParse(v: unknown): SchemaParseResult<T, SchemaError> {
+    if (v === this.value) return { success: true, data: this.value };
+    return { success: false, error: new SchemaError(`Expected literal '${this.value}', got '${JSON.stringify(v)}'`) }
   }
 }
 

@@ -24,6 +24,11 @@ export type BatchInfo = {
 	threads: BatchThreads;
 };
 
+export type BatchResult = {
+	timeElapsed: number;
+	moneyGained: number;
+};
+
 export const availableRam = (ns: NS, server: string): number => ns.getServerMaxRam(server);
 
 export const batchFits = (ns: NS, hosts: BatchHosts, threads: BatchThreads): boolean => {
@@ -92,12 +97,15 @@ export async function prep(ns: NS, info: { target: string; hosts: BatchHosts; })
 	}
 }
 
-export async function batch(ns: NS, info: BatchInfo): Promise<boolean> {
+export async function batch(ns: NS, info: BatchInfo): Promise<BatchResult | null> {
 	const weakenTime = ns.getWeakenTime(info.target);
 	const hackDelay = weakenTime - ns.getHackTime(info.target);
 	const growDelay = weakenTime - ns.getGrowTime(info.target);
 	const result: number[] = [];
 
+	let moneyGained = -1;
+
+	const now = Date.now();
 	await Promise.all([
 		execute(
 			ns,
@@ -106,7 +114,8 @@ export async function batch(ns: NS, info: BatchInfo): Promise<boolean> {
 				threads: info.threads.hack,
 				host: info.hosts.hack
 			}, async ns => {
-				await ns["hack"](info.target, { additionalMsec: hackDelay });
+				const m = await ns["hack"](info.target, { additionalMsec: hackDelay });
+				moneyGained = m;
 				result.push(0);
 			}
 		),
@@ -134,11 +143,19 @@ export async function batch(ns: NS, info: BatchInfo): Promise<boolean> {
 			}
 		),
 	]);
+	const timeElapsed = Date.now() - now;
 
 	const success = result.length === 3 && result.every((v, i) => v === i);
-	if (!success) console.log("%cBATCH FAILED", "color: darkred");
+	if (!success) {
+		console.log("%cBATCH FAILED", "color: darkred");
+		return null;
+	}
+
 	else console.log("%cBATCH SUCCESS", "color: green");
-	return success;
+	return {
+		moneyGained,
+		timeElapsed,
+	};
 }
 
 export function calculateBatchThreads(ns: NS, target: string, hosts: BatchHosts, hackThreadCap = 128): BatchThreads & { ram: number; numPossible: number; } | null {

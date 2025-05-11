@@ -137,7 +137,7 @@ const fill = (s: string, length: number, filler = " ", padStart = false) => s[pa
 const isNumber = (s: string, opts: TableOpts): boolean => new RegExp(
   `^(?:(?:\\$(?:[+-]\\s)?\\d+(?:\\.\\d+)?)|(?:[+-]\\s)?(?:\\d+(?:\\.\\d+)?(?:\\w|[€$%]){0,2}))(?:${opts.separator.split("").map(c => "\\" + c).join("")})?$`
 ).test(s);
-const makeDivider = (columnLengths: number[]) =>  BORDER.mid.leftEdge + (columnLengths.map(n => BORDER.mid.horizontal.repeat(n)).join(BORDER.mid.midPiece)) + BORDER.mid.rightEdge;
+const makeDivider = (columnLengths: number[]) => BORDER.mid.leftEdge + (columnLengths.map(n => BORDER.mid.horizontal.repeat(n)).join(BORDER.mid.midPiece)) + BORDER.mid.rightEdge;
 const makeRow = (row: string[], columnLengths: number[], opts: TableOpts) => BORDER.mid.vertical + (
   row.map((s, i) => fill(padEntry(s, opts), columnLengths[i], " ", isNumber(s, opts))).join(BORDER.mid.vertical)
 ) + BORDER.mid.vertical;
@@ -156,7 +156,7 @@ const makeHead = (head: string[], columnLengths: number[], opts: TableOpts) => {
         columnLengths[i] - opts.headInset,
         BORDER.top.horizontal,
         isNumber(s, opts)
-    ))).join(BORDER.top.midPiece)) + BORDER.top.rightEdge,
+      ))).join(BORDER.top.midPiece)) + BORDER.top.rightEdge,
   ].concat(opts.head === "inline" ? [makeDivider(columnLengths)] : []);
 }
 
@@ -186,7 +186,7 @@ function table(data: string[][], opts?: Partial<TableOpts>) {
   const tableOpts: TableOpts = { ...defaultTableOpts, ...opts };
 
   const [head, ...rest] = data;
-  const { columnLengths, parsedData, parsedHead } = sanitizeData(head, rest, tableOpts); 
+  const { columnLengths, parsedData, parsedHead } = sanitizeData(head, rest, tableOpts);
 
   const headRep = makeHead(parsedHead, columnLengths, tableOpts);
   const dataRep = makeData(parsedData, columnLengths, tableOpts);

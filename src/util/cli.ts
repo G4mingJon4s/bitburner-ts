@@ -23,8 +23,8 @@ type Arg<O extends AllowedTypes> = ArgOptions & {
   schema: t.Schema<O>;
 };
 
-type AnyCLI = CLI<Arg<any>[], AnyFlags, string | undefined>;
-class CLI<
+// TODO: Add commands, that change the next required args depending on the command?
+export default class CLI<
   Args extends Arg<any>[] = [],
   Flags extends AnyFlags = { "help": Flag<"help", boolean> },
   Desc extends string | undefined = undefined
