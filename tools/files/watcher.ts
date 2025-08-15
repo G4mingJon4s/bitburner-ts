@@ -15,6 +15,11 @@ export async function watchDir(dir: string, remote: () => Remote | null, signal:
       console.log("No filename?");
       continue;
     }
+    if (/(?:\.tmp)$|(?:\.swp)$|\~$|\/?\d+$/.test(event.filename)) { // temp file used in vim and others
+      continue;
+    }
+
+    await new Promise(res => setTimeout(res, 10));
 
     const gameFilename = path.relative(srcDir, event.filename).slice(3).replaceAll("\\", "/");
     const editorFilename = path.resolve(srcDir, event.filename);
@@ -120,7 +125,11 @@ export async function buildFile(srcPath: string) {
     jsxFactory: "React.createElement",
     jsxFragment: "React.Fragment",
     logLevel: "silent",
-  }).catch(() => null);
+  }).catch(e => {
+    console.log(`Error building file '${srcPath}'!`);
+    console.log(e);
+    return null;
+  });
 
   if (result === null) return "";
   return result.outputFiles?.[0]?.text ?? "";
