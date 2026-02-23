@@ -37,16 +37,16 @@ export const getTailData = (ns: NS, pid: number): TailData => {
 };
 
 const detachWindow = (ns: NS, pid: number, initial: TailData) => {
-  ns.moveTail(...initial.position, pid);
-  ns.resizeTail(...initial.size, pid);
+  ns.ui.moveTail(...initial.position, pid);
+  ns.ui.resizeTail(...initial.size, pid);
 };
 
 export const referenceSpanId = (pid: number) => `pid-id-${pid}`;
 export const createReferenceSpan = async (ns: NS): Promise<void> => {
-  ns.tail();
+  ns.ui.openTail();
 
   ns.printRaw(React.createElement("span", { id: referenceSpanId(ns.pid) }));
-  ns.setTitle(ns.self().title);
+  ns.ui.setTailTitle(ns.self().title);
 
   // make sure the reference stays between log clearing
   const element = (eval("document") as Document).getElementById(referenceSpanId(ns.pid));
@@ -157,7 +157,7 @@ const getGridSize = (container: TailData, tiling: (typeof TilingMap)[keyof typeo
 export async function initTail(ns: NS) {
   ns.disableLog("ALL");
   ns.clearLog();
-  ns.tail();
+  ns.ui.openTail();
 
   ns.print("Initializing window...");
 
@@ -187,9 +187,9 @@ export async function main(ns: NS) {
 
   ns.disableLog("ALL");
   ns.clearLog();
-  ns.tail();
-  ns.resizeTail(STARTWIDTH, STARTHEIGHT);
-  ns.moveTail((ns.ui.windowSize()[0] - STARTWIDTH) / 2, (ns.ui.windowSize()[1] - STARTHEIGHT) / 2);
+  ns.ui.openTail();
+  ns.ui.resizeTail(STARTWIDTH, STARTHEIGHT);
+  ns.ui.moveTail((ns.ui.windowSize()[0] - STARTWIDTH) / 2, (ns.ui.windowSize()[1] - STARTHEIGHT) / 2);
 
   await createReferenceSpan(ns);
   const containerElement = getDraggable(ns.pid);
@@ -221,7 +221,7 @@ export async function main(ns: NS) {
       container.position[0] + container.size[0] < e.x ||
       container.position[1] + container.size[1] < e.y
     ) {
-      ns.moveTail(...tile.positionData, tile.pid);
+      ns.ui.moveTail(...tile.positionData, tile.pid);
       return;
     }
 
@@ -234,7 +234,7 @@ export async function main(ns: NS) {
     const currentIndex = ctx.tails.indexOf(tile);
     if (currentIndex === -1) throw new Error("Couldn't find own tile");
     const targetIndex = Math.min(row * tiling.cols + col, ctx.tails.length - 1);
-    if (currentIndex === targetIndex) return ns.moveTail(...tile.positionData, tile.pid);
+    if (currentIndex === targetIndex) return ns.ui.moveTail(...tile.positionData, tile.pid);
 
     const temp = ctx.tails[currentIndex];
     ctx.tails[currentIndex] = ctx.tails[targetIndex];
@@ -246,7 +246,7 @@ export async function main(ns: NS) {
   ns.atExit(() => {
     ctx.tails.forEach(data => detachWindow(ns, data.pid, data.initialData));
     observer.disconnect();
-    ns.closeTail();
+    ns.ui.closeTail();
   });
 
   while (true) {
@@ -258,7 +258,7 @@ export async function main(ns: NS) {
       if (running === null || running.tailProperties === null) {
         detachWindow(ns, data.pid, data.initialData);
         ctx.tails = ctx.tails.filter(a => a.pid !== data.pid);
-        ns.closeTail(data.pid);
+        ns.ui.closeTail(data.pid);
       }
     });
 
@@ -282,9 +282,9 @@ export async function main(ns: NS) {
       const relativeY = (height + GAP) * row;
       data.positionData = [container.position[0] + relativeX, (container.position[1] + TITLEHEIGHT + 2) + relativeY];
 
-      ns.tail(data.pid);
-      ns.moveTail(...data.positionData, data.pid);
-      ns.resizeTail(width, (height - 2), data.pid);
+      ns.ui.openTail(data.pid);
+      ns.ui.moveTail(...data.positionData, data.pid);
+      ns.ui.resizeTail(width, (height - 2), data.pid);
     });
   }
 }

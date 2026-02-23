@@ -11,8 +11,10 @@ export async function main(ns: NS) {
   }
 }
 
-const printDescription = (ns: NS, contract: string) => {
+const printDescription = (ns: NS, contract: CodingContractName) => {
   const fn = ns.codingcontract.createDummyContract(contract);
+  if (fn === null) return;
+
   const desc = ns.codingcontract.getDescription(fn, "home");
   console.log(desc);
   ns.rm(fn);
@@ -28,6 +30,11 @@ export async function testSolver<K extends keyof Signatures>(ns: NS, contract: K
     await ns.asleep(1);
 
     const filename = ns.codingcontract.createDummyContract(contract);
+    if (filename === null) {
+      i--;
+      continue;
+    }
+  
     const handle = ns.codingcontract.getContract(filename, "home");
     assertContractType(handle, contract);
 

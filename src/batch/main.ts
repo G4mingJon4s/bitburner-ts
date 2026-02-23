@@ -15,8 +15,8 @@ export function autocomplete(data: AutocompleteData) {
 export async function main(ns: NS): Promise<void> {
   ns.disableLog("ALL");
   ns.clearLog();
-  ns.tail();
-  ns.resizeTail(350, 150);
+  ns.ui.openTail();
+  ns.ui.resizeTail(350, 150);
 
   const allServers = getAllServers(ns).filter(s => !EXCLUDEDSERVERS.includes(s));
 
@@ -52,13 +52,15 @@ export async function main(ns: NS): Promise<void> {
     console.warn("CYCLE");
     if (!isPrepped(ns, target)) console.log("%cPREPPING", "color: orange");
     while (!isPrepped(ns, target)) {
+      const obj = ns.getServer(target) as Server;
+
       ns.clearLog();
       ns.print(`TARGET: ${target}`);
       ns.print("--PREP  PHASE--");
       ns.print(`WEAKEN TIME : ${format.time(ns.getWeakenTime(target))}s`);
       ns.print(`GROW   TIME : ${format.time(ns.getGrowTime(target))}s`);
-      ns.print(`SERVER MONEY: ${Math.round(100 * (ns.getServer(target).moneyAvailable! / ns.getServer(target).moneyMax!))}%`);
-      ns.print(`SERVER SEC  : +${format.number(ns.getServer(target).hackDifficulty! - ns.getServer(target).minDifficulty!)}`);
+      ns.print(`SERVER MONEY: ${Math.round(100 * (obj.moneyAvailable! / obj.moneyMax!))}%`);
+      ns.print(`SERVER SEC  : +${format.number(obj.hackDifficulty! - obj.minDifficulty!)}`);
 
       await prep(ns, {
         target,

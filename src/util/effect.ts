@@ -39,7 +39,7 @@ export const runMain = <A, E>(effect: Effect.Effect<A, E, NSService>) => (ns: NS
 export const main = Effect.gen(function* () {
   const NS = (yield* NSService).call;
 
-  yield* NS(ns => ns.corporation.bribe("", 5));
+  yield* NS(ns => ns.corporation.bribe("ECorp", 5));
 
   Effect.all([
     NS(ns => ns.hack("joesguns")),

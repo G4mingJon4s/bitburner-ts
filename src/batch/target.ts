@@ -1,4 +1,4 @@
-import { getAllServers } from "util/servers.ts";
+import { getAllServers, isNormalServer } from "util/servers.ts";
 import { type BatchHosts, type BatchInfo, calculateBatchThreads } from "./util.ts";
 import { format } from "util/format.ts";
 
@@ -30,11 +30,15 @@ export async function main(ns: NS): Promise<void> {
 }
 
 export function getTargetMetadata(ns: NS, hosts: BatchHosts) {
-	const servers = getAllServers(ns).filter(server => ns.getServer(server).moneyMax !== undefined);
+	const servers = getAllServers(ns).filter(server => {
+		const obj = ns.getServer(server);
+		if (!isNormalServer(obj)) return false;
+		return obj.moneyMax !== undefined;
+	});
 
 	const rawInfo: ((BatchInfo & { ram: number; numPossible: number; }) | null)[] = servers.map(server => {
 		const threads = calculateBatchThreads(ns, server, hosts);
-    if (threads === null) return null;
+		if (threads === null) return null;
 
 		return {
 			target: server,
@@ -57,7 +61,7 @@ export function getTargetMetadata(ns: NS, hosts: BatchHosts) {
 		time: number;
 		score: number;
 	})[] = infos.map(info => {
-		const server = ns.getServer(info.target);
+		const server = ns.getServer(info.target) as Server;
 		server.moneyAvailable = server.moneyMax;
 		server.hackDifficulty = server.minDifficulty;
 

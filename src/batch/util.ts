@@ -1,4 +1,5 @@
 import { execute, getRamCost } from "util/execute.ts";
+import { isNormalServer } from "util/servers";
 
 export const BATCHFILES = {
 	main: "batch/main.ts",
@@ -160,6 +161,8 @@ export async function batch(ns: NS, info: BatchInfo): Promise<BatchResult | null
 
 export function calculateBatchThreads(ns: NS, target: string, hosts: BatchHosts, hackThreadCap = 128): BatchThreads & { ram: number; numPossible: number; } | null {
 	const server = ns.getServer(target);
+	if (!isNormalServer(server)) return null;
+
 	server.moneyAvailable = server.moneyMax;
 	server.hackDifficulty = server.minDifficulty;
 	const player = ns.getPlayer();
@@ -215,6 +218,7 @@ export function calculateBatchThreads(ns: NS, target: string, hosts: BatchHosts,
 
 export function isPrepped(ns: NS, target: string): boolean {
 	const server = ns.getServer(target);
+	if (!isNormalServer(server)) return false;
 
 	return server.hackDifficulty === server.minDifficulty && server.moneyAvailable === server.moneyMax;
 }

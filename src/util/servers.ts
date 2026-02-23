@@ -1,5 +1,9 @@
 import { outsource } from "util/do.ts";
 
+export function isNormalServer(server: ReturnType<NS["getServer"]>): server is Server {
+  return !("isOnline" in server);
+}
+
 export function getAllServers(ns: NS): string[] {
   const servers = new Set<string>();
 
@@ -16,7 +20,7 @@ export function getAllServers(ns: NS): string[] {
 export async function buyAllDarkwebPrograms(ns: NS, allowPartial = false): Promise<boolean> {
   ns.tprint("INFO: Attempting to buy darkweb programs.");
   if (!await outsource(ns, "singularity.purchaseTor")) return false;
-  const allPrograms = await outsource(ns, "singularity.getDarkwebPrograms");
+  const allPrograms = await outsource(ns, "singularity.getDarkwebPrograms") as ProgramName[];
   const combinedCost = await allPrograms.reduce(async (acc, cur) => await acc + await outsource(ns, "singularity.getDarkwebProgramCost", cur), Promise.resolve(0));
   if (!allowPartial && (await outsource(ns, "getPlayer")).money < combinedCost) return false;
   for (const program of allPrograms) await outsource(ns, "singularity.purchaseProgram", program);

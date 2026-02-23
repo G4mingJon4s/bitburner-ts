@@ -20,6 +20,10 @@ export async function testAll(ns: NS, amt = 100) {
       await ns.asleep(1);
 
       const fn = ns.codingcontract.createDummyContract(key);
+      if (fn === null) {
+        i--;
+        continue;
+      }
       const input = ns.codingcontract.getData(fn, "home");
 
       const ans = solvers[key]!(input as never);

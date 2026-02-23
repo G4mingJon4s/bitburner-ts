@@ -1,4 +1,4 @@
-import { getAllServers, buyAllDarkwebPrograms } from "util/servers.ts";
+import { getAllServers, buyAllDarkwebPrograms, isNormalServer } from "util/servers.ts";
 import { outsource } from "util/do.ts";
 
 export const FILEPATH = "servers/access.ts";
@@ -54,12 +54,14 @@ const rootServer = (ns: NS, server: string): boolean => {
   }
 
   const object = ns.getServer(server);
+  if (!isNormalServer(object)) return false;
   if (!ns.hasRootAccess(server) && (object.openPortCount ?? 0) >= (object.numOpenPortsRequired ?? ROOTING_PROGRAMS.length)) ns.nuke(server);
   return ns.hasRootAccess(server);
 };
 
 export const backdoor = async (ns: NS, server: string): Promise<boolean> => {
   const object = ns.getServer(server);
+  if (!isNormalServer(object)) return false;
   if (object.backdoorInstalled) return true;
   
   rootServer(ns, server);
