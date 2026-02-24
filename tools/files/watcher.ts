@@ -114,7 +114,10 @@ export async function pushAllScripts(dir: string, remote: Remote) {
 export async function buildFile(srcPath: string) {
   const result = await esbuild.build({
     entryPoints: [srcPath],
-    minify: true,
+    minify: false,
+    minifySyntax: false,
+    minifyWhitespace: true,
+    minifyIdentifiers: true,
     bundle: true,
     write: false,
     treeShaking: true,

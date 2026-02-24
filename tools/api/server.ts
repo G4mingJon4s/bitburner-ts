@@ -1,3 +1,4 @@
+import { randomUUIDv7 } from "bun";
 import { updateDefinitionFile } from "../files/definitions";
 import { storeSaveFile } from "../files/savefiles";
 import { MessageAnyResponse } from "./methods";
@@ -12,7 +13,10 @@ export const createEndpoint = (port: number) => Bun.serve({
   port,
   websocket: {
     open: async ws => {
-      if (connection !== null) connection.ws.close(1000, "Connected to another client");
+      ws.data = randomUUIDv7();
+
+      if (connection !== null) return ws.close(1013, "Already connected to another client!");
+      console.log("Client connected! Setting up...");
       connection = new Remote(ws);
 
       const defResponse = await connection.makeRequest({
@@ -37,10 +41,10 @@ export const createEndpoint = (port: number) => Bun.serve({
 
       await storeSaveFile(saveResponse.result);
     },
-    close: async ws => {
-      if (connection !== null && connection.ws !== ws) return ws.close(1000);
+    close: async (ws, code, reason) => {
+      if (connection === null || connection.ws.data !== ws.data) return;
+      console.log(`Client disconnected (${code} | '${reason}')! Resetting...`);
       connection = null;
-      ws.close(1000, "Closed correctly");
     },
     message: (_, m) => {
       if (typeof m !== "string") throw new Error("Unsupported message type");
