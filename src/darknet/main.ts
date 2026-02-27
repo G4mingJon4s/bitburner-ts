@@ -1,67 +1,8 @@
-import { createProtocol } from "util/protocol";
-import * as t from "util/schema";
-import { isLatestCrawler } from "darknet/util";
 import { isNormalServer } from "util/servers";
+import { app, p } from "darknet/app";
+import * as t from "util/schema";
 
-type Context = {
-    seenServers: Set<string>;
-    passwords: Map<string, string>;
-};
-export const p = createProtocol<Context>({
-    port: 1234,
-    timeout: 5000,
-});
-
-const OnboardReturnSchema = t.union(t.object({
-    latestVersion: t.boolean().true(),
-}), t.object({
-    latestVersion: t.boolean().false(),
-    newVersion: t.string(),
-}));
-
-export const app = p.router({
-    onboard: p.create()
-    .input(t.object({
-        hostname: t.string(),
-        currentVersion: t.string(),
-    }))
-    .output(OnboardReturnSchema)
-    .resolver((ctx, { ns }) => async data => {
-        const obj = ns.getServer(data.hostname);
-        if (isNormalServer(obj)) throw new Error("darknet/crawl.ts running on normal server?");
-
-        ctx.seenServers.add(data.hostname);
-
-        const versionData = isLatestCrawler(ns, data.currentVersion);
-        if (!versionData.latestVersion) return versionData;
-
-        return { latestVersion: true } as const;
-    }),
-    genericLog: p.create()
-    .input(t.string())
-    .resolver((_, { origin, ns }) => async line => {
-        ns.print(`${origin}: ${line}`);
-    }),
-    getPassword: p.create()
-    .input(t.string())
-    .output(t.string().optional())
-    .resolver(ctx => async server => ctx.passwords.get(server)),
-    setPassword: p.create()
-    .input(t.object({
-        hostname: t.string(),
-        password: t.string(),
-    }))
-    .resolver((ctx, { ns }) => async data => {
-        ns.print(`Found password '${data.password}' for '${data.hostname}'`);
-        ctx.passwords.set(data.hostname, data.password);
-    }),
-    reportIncorrectPassword: p.create()
-    .input(t.string())
-    .resolver((ctx, { ns }) => async server => {
-        ns.print(`Found invalid password '${ctx.passwords.get(server)}' for '${server}'`);
-        ctx.passwords.delete(server);
-    }),
-});
+const LastPasswordsSchema = t.tuple(t.string(), t.string()).array();
 
 export async function main(ns: NS) {
     ns.disableLog("ALL");
@@ -71,10 +12,22 @@ export async function main(ns: NS) {
     const server = p.server(app, {
         seenServers: new Set(),
         passwords: new Map(),
+        unmappedPasswords: new Set(),
+        watchingServers: new Set(),
+        serverLocks: new Map(),
     });
 
+    const lastPasswords = JSON.parse(ns.read("data/darknet/lastPasswords.txt") || "null");
+    const parsingResult = LastPasswordsSchema.safeParse(lastPasswords);
+    if (parsingResult.success) {
+        server.context.passwords = new Map(parsingResult.data);
+    }
+
     ns.atExit(() => {
+        ns.write("data/darknet/lastPasswords.txt", JSON.stringify(Array.from(server.context.passwords.entries())), "w");
+
         for (const s of server.context.seenServers) {
+            ns.print(`Killing crawlers on '${s}'`);
             ns.scriptKill("darknet/crawl.ts", s);
         }
     });

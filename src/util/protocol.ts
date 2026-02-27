@@ -79,7 +79,8 @@ const findProcedure = <Context>(router: AnyRouter<Context>, path: string): AnyPr
   while (keys.length !== 0) {
     const key = keys.shift();
     if (key === undefined || !(key in cur)) return null;
-    cur = router[key];
+    if (isAnyProcedure<Context>(cur)) return null;
+    cur = cur[key];
   }
   if (isAnyProcedure<Context>(cur)) return cur;
   return null;
@@ -165,7 +166,7 @@ type _ProtocolClient<Context, R extends AnyRouter<Context>> = {
   [K in keyof R]: R[K] extends Procedure<Context, infer I, infer O>
   ? ProtocolCaller<I, O>
   : R[K] extends AnyRouter<Context>
-  ? _ProtocolClient<Context, R>
+  ? _ProtocolClient<Context, R[K]>
   : never;
 }
 export type ProtocolClient<Context, R extends AnyRouter<Context>> = Omit<
@@ -206,14 +207,16 @@ const createClientHandler = <Context>(ns: NS, config: InternalConfig) => <I, O>(
   if (proc.clientAction) await proc.clientAction(ns);
 
   ns.writePort(config.port.external, req);
-  const handle = ns.getPortHandle(ns.pid);
-  await Promise.any([handle.nextWrite(), ns.asleep(config.timeout)]);
-  if (handle.empty()) {
+  await Promise.any([ns.nextPortWrite(ns.pid), ns.asleep(config.timeout)]);
+  const answer = ns.readPort(ns.pid);
+  if (!!!answer || answer === "" || answer === "NULL PORT DATA") {
     if (path === "ping") return false as any;
     throw new Error("No response.");
   }
 
-  const res = response.parse(handle.read());
+  const maybeRes = response.safeParse(answer);
+  if (!maybeRes.success) throw new Error(`Protocol error: Invalid response '${JSON.stringify(answer)}': ${maybeRes.error}`);
+  const res = maybeRes.data;
 
   if (res.procedure !== path) throw new Error(`Procedure mismatch: Expected '${path}', got '${res.procedure}'`);
   if (!res.success) throw new Error(`Procedure failed on the server: ${res.error}`);

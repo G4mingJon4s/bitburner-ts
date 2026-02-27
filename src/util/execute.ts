@@ -19,7 +19,7 @@ type ExecuteOptions = {
 
 export function execute<T>(ns: NS, options: ExecuteOptions, task: (ns: NS) => Promise<T>): Promise<T> {
 	return new Promise((res, rej) => {
-		const host = options.host ?? ns.getHostname();
+		const host = options.host ?? ns.self().server;
 		ns.scp(FILEPATH, host, "home");
     
 		const pid = ns.exec(
