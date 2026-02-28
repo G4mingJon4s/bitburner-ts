@@ -16,7 +16,7 @@ export const router = p.router({
   reserve: p.create()
     .input(t.string())
     .output(t.boolean())
-    .resolver((ctx, { origin }) => async server => {
+    .resolver(({ ctx, origin }) => async server => {
       if (Array.from(ctx.servers.entries()).some(entry => entry[0] !== origin && entry[1].includes(server))) {
         if (ctx.debug) ctx.log(`WARN: Script on PID '${origin}' tried to reserve blocked server '${server}'`);
         return false;
@@ -32,7 +32,7 @@ export const router = p.router({
     }),
   drop: p.create()
     .input(t.string())
-    .resolver((ctx, { origin }) => async server => {
+    .resolver(({ ctx, origin }) => async server => {
       const entry = ctx.servers.get(origin) ?? [];
       if (!entry.includes(server)) {
         if (ctx.debug) ctx.log(`WARN: Script on PID '${origin}' tried to drop blocked server '${server}'`);
@@ -45,7 +45,7 @@ export const router = p.router({
     }),
   blocked: p.create()
     .output(t.string().array())
-    .resolver(ctx => async () => {
+    .resolver(({ ctx }) => async () => {
       const blocked = new Set<string>();
       ctx.servers.forEach(entry => entry.forEach(s => blocked.add(s)));
       return Array.from(blocked);

@@ -26,7 +26,7 @@ const OnboardReturnSchema = t.union(t.object({
 const makeDictionary = (path: string) => p.router({
     get: p.create()
     .output(t.string().array())
-    .resolver((_, { ns }) => () => execute(ns, { ram: getRamCost(ns, ["fileExists"]) }, async ns => {
+    .resolver(({ ns }) => () => execute(ns, { ram: getRamCost(ns, ["fileExists"]) }, async ns => {
         const exists = ns["fileExists"](path);
         if (!exists) return [];
 
@@ -34,7 +34,7 @@ const makeDictionary = (path: string) => p.router({
     })),
     add: p.create()
     .input(t.string().array())
-    .resolver((_, { ns }) => lines => execute(ns, { ram: getRamCost(ns, ["fileExists"]) }, async ns => {
+    .resolver(({ ns }) => lines => execute(ns, { ram: getRamCost(ns, ["fileExists"]) }, async ns => {
         const exists = ns["fileExists"](path);
         if (!exists) return ns.write(path, lines.join("\n"), "w");
 
@@ -53,13 +53,13 @@ const passwords = p.router({
     getPassword: p.create()
     .input(t.string())
     .output(t.string().optional())
-    .resolver(ctx => async server => ctx.passwords.get(server)),
+    .resolver(({ ctx }) => async server => ctx.passwords.get(server)),
     setPassword: p.create()
     .input(t.object({
         hostname: t.string(),
         password: t.string(),
     }))
-    .resolver((ctx, { ns }) => async data => {
+    .resolver(({ ctx, ns }) => async data => {
         ns.print(`SUCCESS Found password '${data.password}' for '${data.hostname}'`);
         ctx.unmappedPasswords.delete(data.password);
         ctx.serverLocks.delete(data.hostname);
@@ -67,23 +67,23 @@ const passwords = p.router({
     }),
     reportIncorrectPassword: p.create()
     .input(t.string())
-    .resolver((ctx, { ns }) => async server => {
+    .resolver(({ ctx, ns }) => async server => {
         ns.print(`Found invalid password '${ctx.passwords.get(server)}' for '${server}'`);
         ctx.passwords.delete(server);
     }),
     getUnmappedPasswords: p.create()
     .output(t.string().array())
-    .resolver(ctx => async () => Array.from(ctx.unmappedPasswords)),
+    .resolver(({ ctx }) => async () => Array.from(ctx.unmappedPasswords)),
     reportUnmappedPassword: p.create()
     .input(t.string())
-    .resolver(ctx => async password => void ctx.unmappedPasswords.add(password)),
+    .resolver(({ ctx }) => async password => void ctx.unmappedPasswords.add(password)),
 });
 
 const solving = p.router({
     getServerLock: p.create()
     .input(t.string())
     .output(t.boolean())
-    .resolver((ctx, { ns, origin }) => async server => {
+    .resolver(({ ctx, ns, origin }) => async server => {
         const pid = ctx.serverLocks.get(server);
         if (pid !== undefined && ns.isRunning(pid)) return false;
 
@@ -93,17 +93,17 @@ const solving = p.router({
     hasServerLock: p.create()
     .input(t.string())
     .output(t.boolean())
-    .resolver((ctx, { ns }) => async server => {
+    .resolver(({ ctx, ns }) => async server => {
         const pid = ctx.serverLocks.get(server);
         return pid !== undefined && ns.isRunning(pid);
     }),
     watchServer: p.create()
     .input(t.string())
-    .resolver(ctx => async server => void ctx.watchingServers.add(server)),
+    .resolver(({ ctx }) => async server => void ctx.watchingServers.add(server)),
     isWatchingServer: p.create()
     .input(t.string())
     .output(t.boolean())
-    .resolver(ctx => async server => ctx.watchingServers.has(server)),
+    .resolver(({ ctx })=> async server => ctx.watchingServers.has(server)),
 });
 
 export const app = p.router({
@@ -117,7 +117,7 @@ export const app = p.router({
         currentVersion: t.string(),
     }))
     .output(OnboardReturnSchema)
-    .resolver((ctx, { ns }) => async data => {
+    .resolver(({ ctx, ns }) => async data => {
         const obj = await execute(ns, { ram: getRamCost(ns, ["getServer"]) }, async ns => ns["getServer"](data.hostname));
         if (isNormalServer(obj)) throw new Error("darknet/crawl.ts running on normal server?");
 
@@ -131,11 +131,11 @@ export const app = p.router({
     }),
     getSeenServers: p.create()
     .output(t.string().array())
-    .resolver(ctx => async () => Array.from(ctx.seenServers)),
+    .resolver(({ ctx }) => async () => Array.from(ctx.seenServers)),
 
     genericLog: p.create()
     .input(t.string())
-    .resolver((_, { origin, ns }) => async line => {
+    .resolver(({ origin, ns }) => async line => {
         ns.print(`${origin}: ${line}`);
     }),
     fileLog: p.create()
@@ -143,5 +143,5 @@ export const app = p.router({
         filename: t.string(),
         content: t.string()
     }))
-    .resolver((_, { origin, ns }) => async data => ns.write(`data/darknet/files/${data.filename}/${origin}.txt`, data.content, "w")),
+    .resolver(({ origin, ns }) => async data => ns.write(`data/darknet/files/${data.filename}/${origin}.txt`, data.content, "w")),
 });

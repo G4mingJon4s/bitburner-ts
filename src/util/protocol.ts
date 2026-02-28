@@ -17,7 +17,7 @@ type ProtocolMetadata = {
   origin: number;
   ns: NS;
 };
-type ProcedureResolver<Context, Input, Output> = (ctx: Context, meta: ProtocolMetadata) => ProtocolCaller<Input, Output>;
+type ProcedureResolver<Context, Input, Output> = (meta: ProtocolMetadata & { ctx: Context }) => ProtocolCaller<Input, Output>;
 interface Procedure<Context, Input, Output> {
   input: Input extends TaggedNull ? null : t.Schema<Input>;
   output: Output extends TaggedNull ? null : t.Schema<Output>;
@@ -132,7 +132,8 @@ class Server<Context, R extends AnyRouter<Context>> implements ProtocolServer<Co
       let success = false;
       let value;
       let error = "";
-      await proc.resolve(this.context, {
+      await proc.resolve({
+        ctx: this.context,
         origin: req.data.origin,
         ns,
       })(input?.data ?? null).then(v => {

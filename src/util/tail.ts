@@ -93,7 +93,7 @@ export const router = p.router({
       if ((eval("document") as Document).getElementById(referenceSpanId(ns.pid)) !== null) return;
       await createReferenceSpan(ns);
     })
-    .resolver((ctx, { ns, origin }) => async () => {
+    .resolver(({ ctx, ns, origin }) => async () => {
       if (ctx.tails.some(a => a.pid === origin)) return true;
       const newCount = ctx.tails.length + 1;
       const tiling = TilingMap[newCount];
@@ -121,7 +121,7 @@ export const router = p.router({
       return true;
     }),
   detach: p.create()
-    .resolver((ctx, { ns, origin }) => async () => {
+    .resolver(({ ctx, ns, origin }) => async () => {
       const values = ctx.tails.find(a => a.pid === origin);
       if (values === undefined) return;
 
