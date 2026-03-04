@@ -50,6 +50,15 @@ export async function main(ns: NS) {
 
         const neighbors = ns.dnet.probe();
         for (const neighbor of neighbors) {
+            const dt = ns.dnet.getServerAuthDetails(neighbor);
+            const r = await ns.dnet.heartbleed(neighbor, { logsToCapture: 100, peek: true });
+            if (r.success) {
+                const msgs = r.logs.filter(s => s.includes('"code":401') && s.includes('"passwordAttempted":'));
+                if (msgs.length !== 0) await client.reportExample({
+                    modelId: dt.modelId,
+                    content: msgs[Math.floor(Math.random() * msgs.length)],
+                });
+            }
             if (!await client.solving.isWatchingServer(neighbor)) continue;
 
             const packet = await ns.dnet.packetCapture(neighbor);

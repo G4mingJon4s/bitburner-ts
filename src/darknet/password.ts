@@ -1,6 +1,7 @@
 import type { ProtocolClient } from "util/protocol";
 import type { app, Context } from "darknet/app";
 import * as t from "util/schema";
+import type { LogEntry } from "darknet/parsing";
 
 const isNumber = (c: string) => c.charCodeAt(0) >= 48 && c.charCodeAt(0) <= 57;
 const isAlphabet = (c: string) => c.charCodeAt(0) >= 97 && c.charCodeAt(0) <= 122;
@@ -185,3 +186,14 @@ export async function crackServer(ns: NS, client: ProtocolClient<Context, typeof
     await client.genericLog(`ERROR Solver '${details.modelId}' failed!`);
     return await tryUnmappedPasswords(ns, client, hostname);
 }
+
+export type SolvingContext = {
+    format: ServerAuthDetails["passwordFormat"];
+    length: ServerAuthDetails["passwordLength"];
+
+    attemptedPasswords: Set<string>;
+    knownIndices: (string | undefined)[];
+    knownChars: string[];
+
+    parsedLogs: LogEntry[];
+};

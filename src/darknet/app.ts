@@ -44,10 +44,10 @@ const makeDictionary = (path: string) => p.router({
     })),
 });
 
-const dictionary = p.router({
-    factory: makeDictionary("data/darknet/dictionary/factory.txt"),
-    dog: makeDictionary("data/darknet/dictionary/dog.txt"),
-});
+export const AllDictionaries = ["factory", "common", "dog"] as const;
+const dictionary = Object.fromEntries(
+    AllDictionaries.map((k) => [k, makeDictionary(`data/darknet/dictionary/${k}.txt`)])
+) as { [K in typeof AllDictionaries[number]]: ReturnType<typeof makeDictionary>; };
 
 const passwords = p.router({
     getPassword: p.create()
@@ -144,4 +144,15 @@ export const app = p.router({
         content: t.string()
     }))
     .resolver(({ origin, ns }) => async data => ns.write(`data/darknet/files/${data.filename}/${origin}.txt`, data.content, "w")),
+    reportExample: p.create()
+    .input(t.object({
+        modelId: t.string(),
+        content: t.string()
+    }))
+    .resolver(({ ns }) => async data => {
+        const path = `data/darknet/examples/${data.modelId.replaceAll(" ", "_").replaceAll(";", "ü")}.txt`;
+        if (ns.fileExists(path)) return;
+
+        ns.write(path, data.content, "w");
+    }),
 });

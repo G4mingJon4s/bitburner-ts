@@ -6,10 +6,10 @@ export async function extractFile(ns: NS, client: ProtocolClient<Context, typeof
     const content = new DOMParser().parseFromString(rawContent, "text/html").body.textContent || "";
     if (content === "") return;
 
-    const factoryString = "Some common passwords include";
-    if (content.startsWith(factoryString)) {
-        const passwords = content.slice(factoryString.length).trim().split(", ");
-        await client.dictionary.factory.add(passwords);
+    const commonString = "Some common passwords include";
+    if (content.startsWith(commonString)) {
+        const passwords = content.slice(commonString.length).trim().split(", ");
+        await client.dictionary.common.add(passwords);
         return true;
     }
 
@@ -18,7 +18,14 @@ export async function extractFile(ns: NS, client: ProtocolClient<Context, typeof
         const dogs = content.slice(dogString.length, -1).trim().split(", ");
         await client.dictionary.dog.add(dogs);
         return true;
-    }  
+    }
+
+    const factoryString = "The factory default is usually one of";
+    if (content.startsWith(factoryString)) {
+        const passwords = content.slice(factoryString.length, -1).trim().split(", ");
+        await client.dictionary.factory.add(passwords);
+        return true;
+    }
 
     const rememberString = "Remember this password:";
     if (content.startsWith(rememberString)) {
@@ -39,4 +46,21 @@ export async function extractPacket(ns:NS, client: ProtocolClient<Context, typeo
     const passEnd = string.indexOf(" ", foundServer[1]);
     await client.genericLog("Captured a password!");
     return { hostname: foundServer[0], password: string.slice(foundServer[1] + foundServer[0].length + 1, passEnd)};
+}
+
+export type LogEntry =
+| { type: "factors"; divisor: number; }
+| { type: "mountain"; x: number; y: number; }
+| { type: "mastermind"; password: string; exact: number; misplaced: number; };
+
+export async function extractLogs(logs: string[]): Promise<{
+    entries: LogEntry[];
+    knownIndices: (string | undefined)[];
+    knownChars: string[];
+}> {
+    return {
+        entries: [],
+        knownIndices: [],
+        knownChars: [],
+    };
 }
