@@ -123,7 +123,9 @@ export async function main(ns: NS) {
       const checkCost = getRamCost(ns, ["stanek.activeFragments"]);
       const maxRam = ns.getServerMaxRam(freeServers[0]);
 
-      const active = maxRam < checkCost ? [] : await execute(ns, { ram: getRamCost(ns, ["stanek.activeFragments"]), host: freeServers[0] }, ns => Promise.resolve(ns["stanek"]["activeFragments"]()));
+      const active = maxRam < checkCost ? [] : await execute(ns, { ram: getRamCost(ns, ["stanek.activeFragments"]), host: freeServers[0] }, async ns => {
+        try { return ns["stanek"]["activeFragments"](); } catch { return []; }
+      });
 
       const cutOff = active.length === 0 ? 0 : Math.floor(freeServers.length / 2);
       const stanekInstantiator = createStanekInstance(ns, active);
