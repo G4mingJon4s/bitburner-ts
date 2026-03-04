@@ -41,7 +41,7 @@ export async function outsourceNoException<T extends string, Q = GetPath<NS, T>>
     ns.scp(FILEPATH, HOSTNAME, "home");
     const ramCost = BASERAMCOST + ns.getFunctionRamCost(func);
     while (ns.getServerMaxRam(HOSTNAME) - ns.getServerUsedRam(HOSTNAME) < ramCost) await ns.asleep(10);
-    const pid = ns.exec(FILEPATH, HOSTNAME, { ramOverride: ramCost }, func, ...convertedArgs);
+    const pid = ns.exec(FILEPATH, HOSTNAME, { ramOverride: ramCost, temporary: true }, func, ...convertedArgs);
     if (pid < 1) return null;
 
     while (ns.isRunning(pid)) await ns.asleep(10);
